@@ -1,0 +1,78 @@
+/* Base container */
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: left; /* better readability */
+  background-color: #0f172a; /* slate-900 background */
+  color: #f1f5f9; /* slate-100 text */
+  min-height: 100vh;
+}
+
+/* Remove Vite logo styling (not needed for your project) */
+.logo {
+  display: none;
+}
+
+/* Headings */
+h1, h2, h3 {
+  color: #e2e8f0; /* light gray-blue */
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+/* Paragraphs */
+p {
+  color: #cbd5e1; /* slate-300 */
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* Card-style container */
+.card {
+  background: #1e293b; /* slate-800 */
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  margin-bottom: 1rem;
+}
+
+/* Buttons */
+button {
+  background-color: #4f46e5; /* indigo-600 */
+  color: #fff;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+button:hover {
+  background-color: #4338ca; /* indigo-700 */
+}
+button:disabled {
+  background-color: #475569; /* slate-600 */
+  cursor: not-allowed;
+}
+
+/* Links */
+a {
+  color: #38bdf8; /* sky-400 */
+  text-decoration: none;
+  font-weight: 500;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Progress or status messages */
+.status-success {
+  color: #22c55e; /* green-500 */
+}
+.status-warning {
+  color: #facc15; /* yellow-400 */
+}
+.status-error {
+  color: #ef4444; /* red-500 */
+}
