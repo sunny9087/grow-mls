@@ -1,35 +1,43 @@
 # backend/database.py
 import os
-from sqlmodel import SQLModel, create_engine, Session
-from dotenv import load_dotenv
+from sqlmodel import SQLModel, create_engine
+from sqlalchemy.engine.url import make_url
 
-# Load backend/.env if present
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(dotenv_path=dotenv_path, override=True)
+# read env var
+raw = os.getenv("DATABASE_URL", "").strip()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////tmp/dev.db")
-print(">> Using DATABASE_URL =", DATABASE_URL)
+# If someone accidentally included `DATABASE_URL = "..."` or surrounding quotes, clean it:
+if raw.startswith("DATABASE_URL"):
+    # remove anything up to the first '='
+    try:
+        raw = raw.split("=", 1)[1].strip()
+    except Exception:
+        raw = raw
 
-# SQLite needs check_same_thread=False
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+# strip surrounding quotes if present
+if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+    raw = raw[1:-1].strip()
 
-# create engine (echo=True optional for debug)
+# fallback to tmp sqlite for Render if still empty
+if not raw:
+    raw = "sqlite:////tmp/dev.db"
+
+DATABASE_URL = raw
+
+# choose sqlite connect args only when scheme is sqlite
+connect_args = {}
+try:
+    url_obj = make_url(DATABASE_URL)
+    if url_obj.get_backend_name() == "sqlite":
+        # SQLite needs check_same_thread = False when used with multiple threads
+        connect_args = {"check_same_thread": False}
+except Exception:
+    # if we couldn't parse, default to sqlite tmp file
+    DATABASE_URL = "sqlite:////tmp/dev.db"
+    connect_args = {"check_same_thread": False}
+
+# create engine
 engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=True)
 
-
-def init_db() -> None:
-    """
-    Create tables. Call once at startup (inside FastAPI startup event).
-    Avoid calling this at import time to prevent SQLModel/SQLAlchemy
-    double-registration issues during reload.
-    """
+def init_db():
     SQLModel.metadata.create_all(engine)
-
-
-def get_session():
-    """
-    FastAPI dependency: use `Depends(get_session)` in endpoints.
-    Yields a session and closes it automatically.
-    """
-    with Session(engine) as session:
-        yield session

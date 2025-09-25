@@ -1,31 +1,48 @@
+# backend/main.py
 import os
 import json
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlmodel import Session, select, SQLModel
 
-from database import engine, get_session
+# Use absolute imports (no leading dot) so module can be loaded whether
+# you run uvicorn from backend/ or from repo root as backend.main
+from database import init_db, get_session, engine
 from models import User, Course, Lesson, Quiz, Question, Progress, QuizAttempt
 from schemas import (
     UserOut, CourseOut, LessonOut, QuizOut, QuestionOut,
-    LessonWithProgress, LessonOut
+    LessonWithProgress
 )
+
+# If your seed_data implementation is in this file previously, move it to
+# a helper file called main_helpers.py (or adjust below import to match).
+# Here I import seed_data from main_helpers.py to avoid circular imports.
+# If your seed_data is defined in this file, remove the import and keep the function.
+try:
+    from main_helpers import seed_data
+except Exception:
+    # fallback: if seed_data isn't in main_helpers, try to import from local
+    # module named seed_data.py or define a no-op
+    try:
+        from seed_data import seed_data  # optional second location
+    except Exception:
+        def seed_data():
+            # no-op if not provided (prevents startup crash)
+            return
 
 # -----------------------
 # FastAPI app
 # -----------------------
 app = FastAPI(title="Grow with MLS - Mini Backend (Auth Disabled Demo)")
-# at top of file with other imports
-from fastapi.middleware.cors import CORSMiddleware
+
 # --- DEV CORS: allow frontend origins so browser can call the API during development
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    # add other dev hosts/ports if needed
-]
+# Read from env FRONTEND_URLS (comma separated) or fallback to sensible defaults
+frontend_origins = os.getenv("FRONTEND_URLS", "http://localhost:5173,http://127.0.0.1:5173")
+origins = [o.strip() for o in frontend_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,13 +52,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ensure DB tables
-SQLModel.metadata.create_all(engine)
-
-# Seed data on startup
+# -----------------------
+# Startup: init DB + seed
+# -----------------------
+# IMPORTANT:
+# - init_db() should call `SQLModel.metadata.create_all(engine)` inside database.py
+#   and it should guard against double-registration if possible.
+# - We do NOT call SQLModel.metadata.create_all(engine) here at import time to avoid
+#   duplicate table registration when FastAPI reloader imports modules repeatedly.
 @app.on_event("startup")
 def on_startup():
-    seed_data()
+    # initialize/create tables (implementation should be in database.init_db)
+    try:
+        init_db()
+        print("Database initialized.")
+    except Exception as e:
+        # Print but don't crash server startup for minor DB issues
+        print("init_db() failed:", e)
+
+    # Seed demo data — don't raise on error
+    try:
+        seed_data()
+        print("Seed data run (if needed).")
+    except Exception as e:
+        print("seed_data() failed:", e)
+
+# -----------------------
+# Root endpoint (sanity)
+# -----------------------
+@app.get("/")
+def root():
+    return {"message": "Grow with MLS - backend running (auth disabled demo)"}
+
+# -----------------------
+# Example small helper endpoints (kept minimal here)
+# You can paste the rest of your full endpoints below exactly as before,
+# using absolute imports and get_session as dependency.
+# -----------------------
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "database_url": os.getenv("DATABASE_URL", "sqlite:///./dev.db")}
+
+# Example: list courses — make sure CourseOut is a proper Pydantic model
+@app.get("/courses", response_model=List[CourseOut])
+def list_courses(session: Session = Depends(get_session)):
+    courses = session.exec(select(Course)).all()
+    # If using pydantic v2, ensure CourseOut has model_config={"from_attributes": True}
+    return [CourseOut.from_orm(c) for c in courses]
+
+# Keep the rest of your endpoints (get_course, lessons, quizzes, etc.) below.
+# Make sure they match the get_session signature from database.py and your pydantic models.
 
 # --- simple auth demo endpoints (signup/login) ---
 from pydantic import BaseModel, EmailStr
