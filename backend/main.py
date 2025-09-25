@@ -41,7 +41,7 @@ app = FastAPI(title="Grow with MLS - Mini Backend (Auth Disabled Demo)")
 
 # --- DEV CORS: allow frontend origins so browser can call the API during development
 # Read from env FRONTEND_URLS (comma separated) or fallback to sensible defaults
-frontend_origins = os.getenv("FRONTEND_URLS", "http://localhost:5173,http://127.0.0.1:5173,"https://grow-mls.vercel.app"")
+frontend_origins = os.getenv("FRONTEND_URLS", "http://localhost:5173,http://127.0.0.1:5173,https://grow-mls.vercel.app")
 origins = [o.strip() for o in frontend_origins.split(",") if o.strip()]
 
 app.add_middleware(
